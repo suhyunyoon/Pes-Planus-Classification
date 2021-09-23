@@ -5,20 +5,46 @@ from PIL import Image
 
 import torch
 
-
 from torch.utils.data import Dataset
 
-def read_annotations(data_root, data_split):
-    file_name = data_split + '_annotation.csv'
+from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, Normalize, ToTensor 
+
+# transformation
+mean = [0.5, 0.5, 0.5]
+std = [0.5, 0.5, 0.5]
+def get_transform(split, hw):
+    transform = None
+    h, w = hw, hw
+    if split == 'train':
+        transform = Compose([Resize((h,w)),
+                            ToTensor(),
+                            RandomHorizontalFlip(p=0.5),
+                            Normalize(mean, std)])
+    elif split == 'val':
+        transform = Compose([Resize((h,w)),
+                            ToTensor(),
+                            Normalize(mean, std)])
+    return transform
+
+
+def read_annotations(data_root, data_split, val_ratio):
+    temp_split = 'train' if data_split == 'val' else data_split
+    file_name = temp_split + '_annotation.csv'
     csv_path = os.path.join(data_root, file_name)
 
     # read csv
     ann = pd.read_csv(csv_path, index_col=0)
     data = ann.iloc[:,-1]
+    # split
+    pivot = int(len(data) * (1. - val_ratio))
+    if data_split == 'train':
+        data = data[:pivot]
+    elif data_split == 'val':
+        data = data[pivot:]
     
     # get data id, target
     ids = list(data.keys())
-    if data_split == 'train':
+    if data_split in ['train', 'val']:
         #target = torch.LongTensor(data.values)
         target = list(data.values)
     else:
@@ -28,23 +54,27 @@ def read_annotations(data_root, data_split):
     return ids, target
 
 class FootDataset(Dataset):
-    def __init__(self, data_root='./', data_split='train', transform=None, val_ratio=0.0):
+    def __init__(self, data_root='./', data_split='train', transform=None, val_ratio=0.15):
         # Init
         super(FootDataset, self).__init__()
         self.data_root = data_root
         self.data_split = data_split
         self.transform = transform
+        self.val_ratio = val_ratio
+
+        temp_split = 'train' if data_split == 'val' else self.data_split
 
         # read csv (img path)
-        self.ids, self.targets = read_annotations(self.data_root, self.data_split)
+        self.ids, self.targets = read_annotations(self.data_root, self.data_split, self.val_ratio)
         
         # get specific image path (get 4 data in a id)
         self.images, self.labels = [], []
         for key, target in zip(self.ids, self.targets):
             # get images, txt file
-            #########################
-            for i in range(3):
-                self.images.append(os.path.join(self.data_root, self.data_split, key, 'xray', 'xray_%d.jpg'%i))
+            xray_path = os.path.join(self.data_root, temp_split, key, 'xray', '*')
+            xray_images = glob.glob(xray_path)
+            for img in xray_images:
+                self.images.append(img)
                 self.labels.append(target)
         # To tensor
         self.labels = torch.LongTensor(self.labels)
@@ -60,11 +90,13 @@ class FootDataset(Dataset):
         else:
             img = img_raw
 
-        return img, self.targets[idx]
+        return img, self.labels[idx]
 
 
 if __name__ == "__main__":
-    dataset = FootDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='train')
+    dataset_train = FootDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='train', val_ratio=0.2)
+    dataset_val = FootDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='val', val_ratio=0.2)
 
-    print(len(dataset))
-    print(dataset[0])
+    print(len(dataset_train), len(dataset_val))
+    print(dataset_train[0])
+    print(dataset_val[0])
