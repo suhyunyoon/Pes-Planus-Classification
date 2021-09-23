@@ -99,13 +99,12 @@ def run(args):
             logit = torch.sigmoid(logit).detach()
             logits.append(logit)
             
-        # Training log
-        if e % args.verbose_interval != 0:
-            train_loss /= len(dataset_train)
-            logits = torch.cat(logits, dim=0).cpu()
-            labels = torch.cat(labels, dim=0) 
-            acc, precision, recall, f1, fbeta = eval_score(labels, logits)
-            print('Epoch %d Train Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (e, train_loss, acc, precision, recall, f1, fbeta))
+        # Training log 
+        train_loss /= len(dataset_train)
+        logits = torch.cat(logits, dim=0).cpu()
+        labels = torch.cat(labels, dim=0) 
+        acc, precision, recall, f1, fbeta = eval_score(labels, logits)
+        print('Epoch %d Train Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (e, train_loss, acc, precision, recall, f1, fbeta))
         
         # Validation
         if e % args.verbose_interval == 0:
@@ -136,13 +135,14 @@ if __name__ == "__main__":
     parser.add_argument("--network", default="resnet50", type=str,
                          choices=['resnet34', 'resnet50', 'resnet101', 'resnet152'])
     parser.add_argument("--val_ratio", default=0.15, type=float)
-    parser.add_argument("--hw", default=224, type=int)
+    parser.add_argument("--hw", default=256, type=int)
+    parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--epoches", default=50, type=int)
     parser.add_argument("--learning_rate", default=0.1, type=float)
     parser.add_argument("--weight_decay", default=1e-4, type=float)
     parser.add_argument("--nesterov", default=True, type=bool)
-    parser.add_argument("--verbose_interval", default=1, type=int)
+    parser.add_argument("--verbose_interval", default=3, type=int)
     
     args = parser.parse_args()
     

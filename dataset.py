@@ -7,23 +7,24 @@ import torch
 
 from torch.utils.data import Dataset
 
-from torchvision.transforms import Compose, Resize, RandomHorizontalFlip, Normalize, ToTensor 
+from torchvision import transforms as tf 
 
 # transformation
 mean = [0.5, 0.5, 0.5]
-std = [0.5, 0.5, 0.5]
-def get_transform(split, hw):
+std = [0.25, 0.25, 0.25]
+def get_transform(split, hw, crop_size):
     transform = None
-    h, w = hw, hw
     if split == 'train':
-        transform = Compose([Resize((h,w)),
-                            ToTensor(),
-                            RandomHorizontalFlip(p=0.5),
-                            Normalize(mean, std)])
-    elif split == 'val':
-        transform = Compose([Resize((h,w)),
-                            ToTensor(),
-                            Normalize(mean, std)])
+        transform = tf.Compose([tf.Resize((hw,hw)),
+                            tf.ToTensor(),
+                            tf.RandomCrop(crop_size, padding=4, padding_mode='reflect')
+                            tf.RandomHorizontalFlip(p=0.5),
+                            tf.ColorJitter(hue=.05, saturation=.05)
+                            tf.Normalize(mean, std)])
+    else:
+        transform = tf.Compose([tf.Resize((crop_size, crop_size)),
+                            tf.ToTensor(),
+                            tf.Normalize(mean, std)])
     return transform
 
 
