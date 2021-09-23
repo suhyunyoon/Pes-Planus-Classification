@@ -57,8 +57,8 @@ def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     # Dataset
-    dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw), val_ratio=args.val_ratio)
-    dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw), val_ratio=args.val_ratio)
+    dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
+    dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
     
     # Dataloader
     train_dl = DataLoader(dataset_train, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True, sampler=None)

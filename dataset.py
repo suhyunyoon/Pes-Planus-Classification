@@ -17,9 +17,9 @@ def get_transform(split, hw, crop_size):
     if split == 'train':
         transform = tf.Compose([tf.Resize((hw,hw)),
                             tf.ToTensor(),
-                            tf.RandomCrop(crop_size, padding=4, padding_mode='reflect')
+                            tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
                             tf.RandomHorizontalFlip(p=0.5),
-                            tf.ColorJitter(hue=.05, saturation=.05)
+                            tf.ColorJitter(hue=.05, saturation=.05),
                             tf.Normalize(mean, std)])
     else:
         transform = tf.Compose([tf.Resize((crop_size, crop_size)),
