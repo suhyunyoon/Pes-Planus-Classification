@@ -73,7 +73,7 @@ def run(args):
 
     # Optimizer
     criterion = nn.CrossEntropyLoss().cuda() 
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4, nesterov=args.nesterov)
+    optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay, nesterov=args.nesterov)
 
     # Training 
     for e in range(1, args.epoches+1):
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--epoches", default=50, type=int)
-    parser.add_argument("--learning_rate", default=0.1, type=float)
+    parser.add_argument("--learning_rate", default=0.001, type=float)
     parser.add_argument("--weight_decay", default=1e-4, type=float)
     parser.add_argument("--nesterov", default=True, type=bool)
     parser.add_argument("--verbose_interval", default=3, type=int)
