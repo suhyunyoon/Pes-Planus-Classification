@@ -6,9 +6,12 @@ from datetime import datetime
 import torch
 from torch import nn, optim
 
+from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
+
 from torch.utils.data import DataLoader
 
 from dataset import FootDataset, get_transform
+from dataset_aug import FootDatasetAug
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, fbeta_score
 
@@ -27,7 +30,7 @@ def eval_score(label, logit):
     return acc, precision, recall, f1, fbeta
 
 # Validation in training
-def validate(model, dl, dataset, criterion):
+def validate(model, dl, dataset, criterion, verbose=False):
     model.eval()
     with torch.no_grad():
         val_loss = 0.
@@ -46,34 +49,53 @@ def validate(model, dl, dataset, criterion):
             logits.append(logit)
         # Eval
         val_loss /= len(dataset)
-        logits = torch.cat(logits, dim=0).cpu()
-        labels = torch.cat(labels, dim=0)
-        acc, precision, recall, f1, fbeta = eval_score(labels, logits)
-        print('Validation Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (val_loss, acc, precision, recall, f1, fbeta))
+        if verbose:
+            logits = torch.cat(logits, dim=0).cpu()
+            labels = torch.cat(labels, dim=0)
+            acc, precision, recall, f1, fbeta = eval_score(labels, logits)
+            print('Validation Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (val_loss, acc, precision, recall, f1, fbeta))
     model.train()
+
+    return val_loss
     
 
 def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     # Dataset
-    dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
-    dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
-    
+    dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0,)
+    #dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
+    dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.) 
+
     # Dataloader
     train_dl = DataLoader(dataset_train, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True, sampler=None)
     val_dl = DataLoader(dataset_val, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False, sampler=None)
     
     # Model
-    from torchvision.models import resnet50
-    model = resnet50(pretrained=True)
-    model.fc = nn.Linear(2048, NUM_CLASSES)
+    if args.network == 'resnet18':
+        model = resnet18(pretrained=True)
+        f_num = 512
+    elif args.network == 'resnet34':
+        model = resnet34(pretrained=True)
+        f_num = 512
+    elif args.network == 'resnet50':
+        model = resnet50(pretrained=True)
+        f_num = 2048
+    elif args.network == 'resnet101':
+        model = resnet101(pretrained=True)
+        f_num = 2048
+    elif args.network == 'resnet152':
+        model = resnet152(pretrained=True)
+        f_num = 2048
+    model.fc = nn.Linear(f_num, NUM_CLASSES)
     # model dataparallel
     model = nn.DataParallel(model).cuda()
 
     # Optimizer
     criterion = nn.CrossEntropyLoss().cuda() 
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay, nesterov=args.nesterov)
+    #optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=3)
 
     # Training 
     for e in range(1, args.epoches+1):
@@ -108,8 +130,14 @@ def run(args):
         
         # Validation
         if e % args.verbose_interval == 0:
-            validate(model, val_dl, dataset_val, criterion)
+            val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
+        else:
+            val_loss = validate(model, val_dl, dataset_val, criterion, verbose=False)
+        # lr scheduling
+        scheduler.step(val_loss)
     
+    print('Final Validation: ', end='')
+    val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
     # Save final model
     weights_path = os.path.join(args.weights_dir, args.network + '.pth')
     # split module from dataparallel
@@ -133,7 +161,7 @@ if __name__ == "__main__":
     # Training
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--network", default="resnet50", type=str,
-                         choices=['resnet34', 'resnet50', 'resnet101', 'resnet152'])
+                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'])
     parser.add_argument("--val_ratio", default=0.15, type=float)
     parser.add_argument("--hw", default=256, type=int)
     parser.add_argument("--crop_size", default=224, type=int)

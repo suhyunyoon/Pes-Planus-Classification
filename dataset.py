@@ -50,7 +50,7 @@ def read_annotations(data_root, data_split, val_ratio):
         target = list(data.values)
     else:
         #target = torch.zeros(len(ids), dtype=torch.uint8)
-        target = [0 for i in len(ids)]
+        target = [0 for i in range(len(ids))]
 
     return ids, target
 
@@ -84,6 +84,45 @@ class FootDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
+        img_raw = Image.open(self.images[idx])
+
+        if self.transform is not None:
+            img = self.transform(img_raw)
+        else:
+            img = img_raw
+
+        return img, self.labels[idx]
+
+class PressureDataset(Dataset):
+    def __init__(self, data_root='./', data_split='train', transform=None, val_ratio=0.0):
+        # Init
+        super(FootDataset, self).__init__()
+        self.data_root = data_root
+        self.data_split = data_split
+        self.transform = transform
+        self.val_ratio = val_ratio
+
+        temp_split = 'train' if data_split == 'val' else self.data_split
+
+        # read csv (img path)
+        self.ids, self.targets = read_annotations(self.data_root, self.data_split, self.val_ratio)
+        
+        # get specific image path (get 4 data in a id)
+        self.images, self.labels = [], []
+        for key, target in zip(self.ids, self.targets):
+            # get images, txt file
+            pressure_path = os.path.join(self.data_root, temp_split, key, 'rsdb', '1_Static_Image.txt')
+            self.images.append(pressure_path)
+            self.labels.append(target)
+        # To tensor
+        self.labels = torch.LongTensor(self.labels)
+    
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        with open(self.images[idx], 'r') as f:
+            f.readlines()
         img_raw = Image.open(self.images[idx])
 
         if self.transform is not None:
