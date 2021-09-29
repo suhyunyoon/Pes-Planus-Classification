@@ -10,7 +10,7 @@ from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet15
 
 from torch.utils.data import DataLoader
 
-from dataset import FootDataset, get_transform
+from dataset import FootDataset, PressureDataset, get_transform, get_pressure_transform
 from dataset_aug import FootDatasetAug
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, fbeta_score
@@ -63,9 +63,15 @@ def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     # Dataset
-    dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0,)
-    #dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
-    dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.) 
+    if args.dataset == 'foot':
+        dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0,)
+        #dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
+        dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.) 
+    elif args.dataset == 'pressure':
+        dataset_train = PressureDataset(data_root=args.data_root, data_split='train', transform=get_pressure_transform('train'), val_ratio=args.val_ratio)
+        dataset_val = PressureDataset(data_root=args.data_root, data_split='val', transform=get_pressure_transform('val'), val_ratio=args.val_ratio)
+    elif args.dataset == 'point':
+        pass
 
     # Dataloader
     train_dl = DataLoader(dataset_train, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True, sampler=None)
@@ -129,10 +135,11 @@ def run(args):
         print('Epoch %d Train Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (e, train_loss, acc, precision, recall, f1, fbeta))
         
         # Validation
-        if e % args.verbose_interval == 0:
-            val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
-        else:
-            val_loss = validate(model, val_dl, dataset_val, criterion, verbose=False)
+        #if e % args.verbose_interval == 0:
+        #    val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
+        #else:
+        #    val_loss = validate(model, val_dl, dataset_val, criterion, verbose=False)
+        val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
         # lr scheduling
         scheduler.step(val_loss)
     
@@ -153,6 +160,7 @@ if __name__ == "__main__":
     # Environment, Dataset
     parser.add_argument("--num_workers", default=os.cpu_count()//2, type=int)
     parser.add_argument("--data_root", default="/home/suhyun/dataset/계명대 동산병원_데이터", type=str, help="Must contains train_annotations.csv")
+    parser.add_argument("--dataset", default="foot", type=str, choices=['foot', 'pressure', 'point'])
 
     # Output Path
     parser.add_argument("--log_name", default="sample_train_eval", type=str)
@@ -166,7 +174,7 @@ if __name__ == "__main__":
     parser.add_argument("--hw", default=256, type=int)
     parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--epoches", default=50, type=int)
+    parser.add_argument("--epoches", default=15, type=int)
     parser.add_argument("--learning_rate", default=0.001, type=float)
     parser.add_argument("--weight_decay", default=1e-4, type=float)
     parser.add_argument("--nesterov", default=True, type=bool)

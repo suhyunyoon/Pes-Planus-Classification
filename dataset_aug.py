@@ -17,30 +17,24 @@ mean = [0.5, 0.5, 0.5]
 std = [0.25, 0.25, 0.25]
 
 def read_aug_annotations(data_root):
-    data_dir = os.path.join(data_root, 'xray_data')
-    ann_path = os.path.join(data_dir, 'annotations.json')
+    csv_path = os.path.join(data_root, 'test_xray_annotation.csv')
 
-    with open(ann_path, "r", encoding='us-ascii') as f:
-        anns = json.load(f)
-    
-    keys = list(anns.keys())[:-1]
+    ann = pd.read_csv(csv_path, index_col=0)
+    ids = ann.index
 
     # image path (L / R)
-    images = [os.path.join(data_dir, i + '.jpg') for i in keys]
+    #images = [os.path.join(data_dir, i + '.jpg') for i in keys]
 
     # target
-    is_flat = [anns[i]['is_flat'] for i in keys]
-
+    #is_flat = [anns[i]['is_flat'] for i in keys]
+    
     # points
-    points = [anns[i]['points'] for i in keys]
+    #points = [anns[i]['points'] for i in keys]
 
     # test data keys
-    data_keys = keys[::2]
-    ids = [anns[i]['patient_uuid'] for i in data_keys]
-
-    data = {id_:[(is_flat[i*2], points[i*2]), 
-                (is_flat[i*2] or is_flat[i*2+1], [[0,0]]*4), 
-                (is_flat[i*2+1], points[i*2+1])] for i, id_ in enumerate(ids)}
+    data = {id_:[(ann.loc[id_]['left_is_flat'], [[0,0]]*4), 
+                (ann.loc[id_]['is_flat'], [[0,0]]*4), 
+                (ann.loc[id_]['right_is_flat'], [[0,0]]*4)] for id_ in ann.index}
 
     # image path, target, points, 
     return data
@@ -101,6 +95,12 @@ class FootDatasetAug(Dataset):
             img = img_raw
 
         return img, self.labels[idx]#, self.points[idx], self.types[idx]
+
+class PointDatasetAug(FootDatasetAug):
+    def __init__(self, data_root='./', data_split='train', transform=None, val_ratio=0.):
+        # Init
+        super(PointDatasetAug, self).__init__(data_root='./', data_split='train', transform=None, val_ratio=0.)
+
 
 
 if __name__ == "__main__":
