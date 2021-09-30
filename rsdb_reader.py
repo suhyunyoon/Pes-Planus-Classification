@@ -6,7 +6,7 @@ from tqdm import tqdm
 import argparse
 import shutil
 
-
+import glob
 
 
 def make_folder(dir):
@@ -20,11 +20,23 @@ dataset_root = "./data"
 max_p = 0
 target_dataset = dataset_root
 
+# 1_Dynamic_Maximum_Image.txt
+
+
+
 class RSDBFile:
     def __init__(self, rsdb_dir=None, name=None, debug=debug):
         self.debug = debug
         self.name = name
         self.file_dir = "{}/1_{}.txt".format(rsdb_dir, name)
+        
+        if not os.path.isfile(self.file_dir):
+            self.file_dir = self.file_dir.replace("val", "train")
+        
+        
+        # self.file_dir = glob.glob("{}/*{}*".format(rsdb_dir, name))[0]
+        
+
         # print("file_dir = {}".format(self.file_dir))
         # self.file = open(self.file_dir, "r", encoding='euc-kr')
         self.file = None
@@ -807,7 +819,6 @@ def convert_Dynamic_Maximum_Image(rsdb_dir=None, write_csv=False):
         lines = Dynamic_Maximum_Image.read_until_enter()[:-1]
         
         # foot_data['Dynamic_Maximum_Image'] = []
-        global max_p
 
         rows = []
         for l in lines:
@@ -816,9 +827,7 @@ def convert_Dynamic_Maximum_Image(rsdb_dir=None, write_csv=False):
             # print(l)
             for s in l.split():
                 p = float(s)
-                if max_p < p:
-                    max_p = p
-
+         
                 row.append(p)
             rows.append(row)
         
@@ -838,8 +847,6 @@ def convert_Dynamic_Maximum_Image(rsdb_dir=None, write_csv=False):
 
         # foot_data['Dynamic_Maximum_Image'] = np.array(image)
     
-    print("max_p = {}".format(max_p))
-
     return dmi_map
 
     Dynamic_Maximum_Image.close()

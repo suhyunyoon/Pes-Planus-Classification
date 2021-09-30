@@ -15,6 +15,8 @@ import rsdb_reader
 
 from os.path import join
 
+from tqdm import tqdm
+
 import argparse
 import cv2
 # Mixed Dynamic Maximum Image
@@ -88,8 +90,9 @@ class CombinationDataset(Dataset):
         self.ids, self.targets = read_annotations(self.data_root, self.data_split, self.val_ratio)
 
 
-        for uuid, target in zip(self.ids, self.targets):
+        for uuid, target in tqdm(zip(self.ids, self.targets), total=len(self.ids)):
             rsdb_dir = join(dataset_dir, uuid, "rsdb")
+            # print('rsdb_dir = {}'.format(rsdb_dir))
             dmi_list = rsdb_reader.convert_Dynamic_Maximum_Image(rsdb_dir)
 
 
@@ -102,11 +105,13 @@ class CombinationDataset(Dataset):
             for side in ['left', 'right']:
                 for foot in dmi_list[side]:
                     f = torch.Tensor(foot)
-                    print("foot.shape = {}".format(f.shape))
-                    f = F.interpolate(f, size=(64,32), mode='bilinear')
-                    
                     f.unsqueeze_(0)
-                    f = foot.repeat(3, 1, 1)
+                    f = f.repeat(3, 1, 1)
+                    f.unsqueeze_(0)
+                    # print("foot.shape = {}".format(f.shape))
+                    
+                    f = F.interpolate(f, size=(64,32), mode='bilinear')
+                    f.squeeze_(0)
                     resized_dmi_list[side].append(f)
 
 
@@ -133,7 +138,7 @@ class CombinationDataset(Dataset):
         l_img = self.foot_list_map[uuid]['left'][li]
         r_img = self.foot_list_map[uuid]['right'][ri]
 
-        img = torch.cat((l_img, r_img), 1)
+        img = torch.cat((l_img, r_img), 2)
 
         if self.transform is not None:
             img = self.transform(img)
