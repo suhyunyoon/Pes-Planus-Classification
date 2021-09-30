@@ -150,15 +150,19 @@ class PressureDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset_train = FootDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='train', transform=get_transform('train'), val_ratio=0.2)
-    dataset_val = FootDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='val', transform=get_transform('val'), val_ratio=0.2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_root", default="./", type=str, help="Must contains train_annotations.csv")
+    args = parser.parse_args()
+    
+    dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train'), val_ratio=0.2)
+    dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val'), val_ratio=0.2)
 
     print(len(dataset_train), len(dataset_val))
     print(dataset_train[0][0].shape, dataset_train[0][1])
     print(dataset_val[0][0].shape, dataset_val[0][1])
 
-    dataset_train = PressureDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='train', val_ratio=0.2, transform=get_pressure_transform('train'))
-    dataset_val = PressureDataset(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='val', val_ratio=0.2, transform=get_pressure_transform('val'))
+    dataset_train = PressureDataset(data_root=args.data_roopt, data_split='train', val_ratio=0.2, transform=get_pressure_transform('train'))
+    dataset_val = PressureDataset(data_root=args.data_root, data_split='val', val_ratio=0.2, transform=get_pressure_transform('val'))
 
     print(len(dataset_train), len(dataset_val))
     print(dataset_train[0][0].shape, dataset_train[0][1])

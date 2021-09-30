@@ -20,7 +20,7 @@ NUM_CLASSES = 2
 # EVALUATION
 def eval_score(label, logit):
     pred = torch.argmax(logit, dim=1)
-
+    # evaluation metrics
     acc = accuracy_score(label, pred)
     precision = precision_score(label, pred, zero_division=0)
     recall = recall_score(label, pred)
@@ -64,9 +64,9 @@ def run(args):
 
     # Dataset
     if args.dataset == 'foot':
-        dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0,)
+        dataset_val = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0.)
         #dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
-        dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.) 
+        dataset_train = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.) 
     elif args.dataset == 'pressure':
         dataset_train = PressureDataset(data_root=args.data_root, data_split='train', transform=get_pressure_transform('train'), val_ratio=args.val_ratio)
         dataset_val = PressureDataset(data_root=args.data_root, data_split='val', transform=get_pressure_transform('val'), val_ratio=args.val_ratio)
@@ -159,11 +159,11 @@ if __name__ == "__main__":
 
     # Environment, Dataset
     parser.add_argument("--num_workers", default=os.cpu_count()//2, type=int)
-    parser.add_argument("--data_root", default="/home/suhyun/dataset/계명대 동산병원_데이터", type=str, help="Must contains train_annotations.csv")
+    parser.add_argument("--data_root", default="./", type=str, help="Must contains train_annotations.csv")
     parser.add_argument("--dataset", default="foot", type=str, choices=['foot', 'pressure', 'point'])
 
     # Output Path
-    parser.add_argument("--log_name", default="sample_train_eval", type=str)
+    parser.add_argument("--log_name", default="sample_log", type=str) # Not using
     parser.add_argument("--weights_dir", default="result/", type=str)
 
     # Training

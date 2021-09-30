@@ -104,8 +104,12 @@ class PointDatasetAug(FootDatasetAug):
 
 
 if __name__ == "__main__":
-    dataset_train = FootDatasetAug(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='train', val_ratio=0.2)
-    dataset_val = FootDatasetAug(data_root='/home/suhyun/dataset/계명대 동산병원_데이터', data_split='val', val_ratio=0.2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_root", default="./", type=str, help="Must contains train_annotations.csv")
+    args = parser.parse_args()
+    
+    dataset_train = FootDatasetAug(data_root=args.data_root, data_split='train', val_ratio=0.2)
+    dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', val_ratio=0.2)
 
     print(len(dataset_train), len(dataset_val))
     print(dataset_train[0])
