@@ -18,7 +18,6 @@ from os.path import join
 from tqdm import tqdm
 
 import argparse
-import cv2
 # Mixed Dynamic Maximum Image
 
 
