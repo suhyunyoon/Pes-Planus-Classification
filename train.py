@@ -11,9 +11,8 @@ from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet15
 
 from torch.utils.data import DataLoader
 
-import importlib
 from dataset import FootDataset, PressureDataset, get_transform, get_pressure_transform
-#from dataset_aug import FootDatasetAug
+from dataset_aug import FootDatasetAug
 from dataset_rsdb import CombinationDataset, get_rsdb_transform
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, fbeta_score
@@ -69,7 +68,7 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
                 }
             # save csv
             df = pd.DataFrame(data=data, index=[dataset.ids[i//3] for i in range(len(dataset.ids)*3)])
-            df.to_csv(args.log_dir, sep=',')
+            df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
     model.train()
 
     return val_loss
@@ -79,15 +78,12 @@ def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     # Foot Dataset(classification)
-    if args.dataset == 'foot':
-        dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0.)
-        try:
-            from dataset_aug import FootDatasetAug
-            dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.)
-            flag_aug = True
-        except:
+    if args.dataset in ['foot', 'foot_aug']:
+        dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio if args.dataset=='foot' else 0.)
+        if args.dataset == 'foot':
             dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
-            flag_aug = False
+        else:
+            dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.)
     # Pressure Dataset(Classification)
     elif args.dataset == 'pressure':
         dataset_train = PressureDataset(data_root=args.data_root, data_split='train', transform=get_pressure_transform('train'), val_ratio=args.val_ratio)
@@ -192,7 +188,7 @@ if __name__ == "__main__":
     # Environment, Dataset
     parser.add_argument("--num_workers", default=os.cpu_count()//2, type=int)
     parser.add_argument("--data_root", default="./", type=str, help="Must contains train_annotations.csv")
-    parser.add_argument("--dataset", default="foot", type=str, choices=['foot', 'pressure', 'point', 'rsdb'])
+    parser.add_argument("--dataset", default="foot", type=str, choices=['foot', 'foot_aug', 'pressure', 'point', 'rsdb'])
 
     # Output Path
     parser.add_argument("--log_dir", default="log/", type=str)

@@ -72,7 +72,7 @@ class FootDatasetAug(Dataset):
         # To tensor
         self.labels = torch.LongTensor(self.labels)
         self.points = torch.FloatTensor(self.points) 
-        self.types = torch.LongTensor(self.labels)
+        self.types = torch.LongTensor(self.types)
 
     def __len__(self):
         return len(self.labels)
