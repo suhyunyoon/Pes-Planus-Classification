@@ -136,7 +136,9 @@ def run(args):
         optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2)
 
-    # Training 
+    # Training
+    weights_name = '{}_{}_lr{}_e{}.pth'.format(args.network, args.optimizer, args.learning_rate, args.epoches)
+    best_val_loss = 999999999.
     for e in range(1, args.epoches+1):
         model.train()
         train_loss = 0.
@@ -175,13 +177,21 @@ def run(args):
         val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
         # lr scheduling
         scheduler.step(val_loss)
+        # save best model
+        if best_val_loss > val_loss:
+            best_val_loss = val_loss
+            weights_path = os.path.join(args.weights_dir, 'best_' + weights_name) 
+            # split module from dataparallel
+            torch.save(model.module.state_dict(), weights_path)
+            print("Best Model Saved.")
     
     print('Final Validation: ', end='')
     val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
     # Save final model
-    weights_path = os.path.join(args.weights_dir, '{}_{}_lr{}_e{}_.pth'.format(args.network, args.optimizer, args.learning_rate, args.epoches))
+    weights_path = os.path.join(args.weights_dir, weights_name) 
     # split module from dataparallel
     torch.save(model.module.state_dict(), weights_path)
+    print(weights_name, "Saved.")
     torch.cuda.empty_cache()
     
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
