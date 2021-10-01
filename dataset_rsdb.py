@@ -25,20 +25,19 @@ import cv2
 # transformation
 mean = [0.5, 0.5, 0.5]
 std = [0.25, 0.25, 0.25]
-# def get_transform(split, hw=256, crop_size=224):
-#     transform = None
-#     if split == 'train':
-#         transform = tf.Compose([tf.Resize((hw,hw)),
-#                             tf.ToTensor(),
-#                             tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
-#                             tf.RandomHorizontalFlip(p=0.5),
-#                             tf.ColorJitter(hue=.05, saturation=.05),
-#                             tf.Normalize(mean, std)])
-#     else:
-#         transform = tf.Compose([tf.Resize((crop_size, crop_size)),
-#                             tf.ToTensor(),
-#                             tf.Normalize(mean, std)])
-#     return transform
+def get_rsdb_transform(split):
+    transform = None
+    if split == 'train':
+        transform = tf.Compose([#tf.ToTensor(),
+                            #tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
+                            tf.RandomHorizontalFlip(p=0.5),
+                            #tf.RandomRotation()
+                            tf.ColorJitter(hue=.05, saturation=.05),
+                            tf.Normalize(mean, std)])
+    else:
+        transform = tf.Compose([#tf.ToTensor(),
+                            tf.Normalize(mean, std)])
+    return transform
 
 
 def read_annotations(data_root, data_split, val_ratio):
@@ -153,12 +152,15 @@ if __name__ == "__main__":
     parser.add_argument("--data_root", default="./data", type=str, help="Must contains train_annotations.csv")
     args = parser.parse_args()
     
-    dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=None, val_ratio=0.2)
-    dataset_val = CombinationDataset(data_root=args.data_root, data_split='val', transform=None, val_ratio=0.2)
+    dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=get_rsdb_transform('train'), val_ratio=0.)
+    dataset_val = CombinationDataset(data_root=args.data_root, data_split='test', transform=get_rsdb_transform('test'), val_ratio=0.)
 
     print(len(dataset_train), len(dataset_val))
     print(dataset_train[0][0].shape, dataset_train[0][1])
     print(dataset_val[0][0].shape, dataset_val[0][1])
+
+    print(dataset_train.ids[:5])
+    print(dataset_val.ids[:5])
 
     # dataset_train = PressureDataset(data_root=args.data_roopt, data_split='train', val_ratio=0.2, transform=get_pressure_transform('train'))
     # dataset_val = PressureDataset(data_root=args.data_root, data_split='val', val_ratio=0.2, transform=get_pressure_transform('val'))

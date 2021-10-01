@@ -22,19 +22,10 @@ def read_aug_annotations(data_root):
     ann = pd.read_csv(csv_path, index_col=0)
     ids = ann.index
 
-    # image path (L / R)
-    #images = [os.path.join(data_dir, i + '.jpg') for i in keys]
-
-    # target
-    #is_flat = [anns[i]['is_flat'] for i in keys]
-    
-    # points
-    #points = [anns[i]['points'] for i in keys]
-
     # test data keys
-    data = {id_:[(ann.loc[id_]['left_is_flat'], [[0,0]]*4), 
-                (ann.loc[id_]['is_flat'], [[0,0]]*4), 
-                (ann.loc[id_]['right_is_flat'], [[0,0]]*4)] for id_ in ann.index}
+    data = {id_:[(ann.loc[id_]['left_is_flat'], ann.loc[id_]['left_point_0_x':'left_point_3_y'].tolist()), 
+                (ann.loc[id_]['is_flat'], [0]*8), 
+                (ann.loc[id_]['right_is_flat'], ann.loc[id_]['right_point_0_x':'right_point_3_y'].tolist())] for id_ in ann.index}
 
     # image path, target, points, 
     return data
@@ -94,7 +85,7 @@ class FootDatasetAug(Dataset):
         else:
             img = img_raw
 
-        return img, self.labels[idx]#, self.points[idx], self.types[idx]
+        return img, self.labels[idx], self.types[idx]
 
 class PointDatasetAug(FootDatasetAug):
     def __init__(self, data_root='./', data_split='train', transform=None, val_ratio=0.):
