@@ -59,8 +59,13 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
             acc, precision, recall, f1, fbeta = eval_score(labels, logits)
             print('Validation Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (val_loss, acc, precision, recall, f1, fbeta))
         if save:
+            # LMR annotations exists
+            if hasattr(dataset, 'types'):
+                types = dataset.types
+            else:
+                types = [0] * len(dataset)
             data = {
-                'type': dataset.types,
+                'type': types,
                 'logit_0': logits[:,0],
                 'logit_1': logits[:,1],
                 'pred': preds,
