@@ -2,6 +2,7 @@ import argparse
 import os
 from tqdm import tqdm
 from datetime import datetime
+import pandas as pd
 
 import torch
 from torch import nn, optim
@@ -12,6 +13,7 @@ from torch.utils.data import DataLoader
 
 from dataset import FootDataset, PressureDataset, get_transform, get_pressure_transform
 from dataset_aug import FootDatasetAug
+from dataset_rsdb import CombinationDataset, get_rsdb_transform
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, fbeta_score
 
@@ -30,15 +32,16 @@ def eval_score(label, logit):
     return acc, precision, recall, f1, fbeta
 
 # Validation in training
-def validate(model, dl, dataset, criterion, verbose=False):
+def validate(args, model, dl, dataset, criterion, verbose=False, save=False): 
     model.eval()
     with torch.no_grad():
         val_loss = 0.
         logits, labels = [], []
-        for img, label in tqdm(dl):
+        for pack in tqdm(dl):
+            img, label = pack[0], pack[1]
             labels.append(label)
             img, label = img.cuda(), label.cuda()
-            
+
             # forward
             logit = model(img)
             loss = criterion(logit, label)
@@ -49,11 +52,28 @@ def validate(model, dl, dataset, criterion, verbose=False):
             logits.append(logit)
         # Eval
         val_loss /= len(dataset)
-        if verbose:
-            logits = torch.cat(logits, dim=0).cpu()
-            labels = torch.cat(labels, dim=0)
+        logits = torch.cat(logits, dim=0).cpu()
+        labels = torch.cat(labels, dim=0)
+        preds = torch.argmax(logits, dim=1)
+        if verbose: 
             acc, precision, recall, f1, fbeta = eval_score(labels, logits)
             print('Validation Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (val_loss, acc, precision, recall, f1, fbeta))
+        if save:
+            # LMR annotations exists
+            if hasattr(dataset, 'types'):
+                types = dataset.types
+            else:
+                types = [0] * len(dataset)
+            data = {
+                'type': types,
+                'logit_0': logits[:,0],
+                'logit_1': logits[:,1],
+                'pred': preds,
+                'label': labels
+                }
+            # save csv
+            df = pd.DataFrame(data=data, index=[dataset.ids[i//3] for i in range(len(dataset.ids)*3)])
+            df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
     model.train()
 
     return val_loss
@@ -62,17 +82,26 @@ def validate(model, dl, dataset, criterion, verbose=False):
 def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-    # Dataset
-    if args.dataset == 'foot':
-        dataset_val = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=0.)
-        #dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
-        dataset_train = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.) 
+    # Foot Dataset(classification)
+    if args.dataset in ['foot', 'foot_aug']:
+        dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio if args.dataset=='foot' else 0.)
+        if args.dataset == 'foot':
+            dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=args.val_ratio)
+        else:
+            dataset_val = FootDatasetAug(data_root=args.data_root, data_split='val', transform=get_transform('val', args.hw, crop_size=args.crop_size), val_ratio=0.)
+    # Pressure Dataset(Classification)
     elif args.dataset == 'pressure':
         dataset_train = PressureDataset(data_root=args.data_root, data_split='train', transform=get_pressure_transform('train'), val_ratio=args.val_ratio)
         dataset_val = PressureDataset(data_root=args.data_root, data_split='val', transform=get_pressure_transform('val'), val_ratio=args.val_ratio)
+    # 4 Point regression
     elif args.dataset == 'point':
         pass
-
+    # rsdb Dynamic set(Classification)
+    elif args.dataset == 'rsdb':
+        dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=get_rsdb_transform('train'), val_ratio=0.)
+        dataset_val = CombinationDataset(data_root=args.data_root, data_split='test', transform=get_rsdb_transform('val'), val_ratio=0.)
+    
+    print(len(dataset_train), len(dataset_val))
     # Dataloader
     train_dl = DataLoader(dataset_train, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True, sampler=None)
     val_dl = DataLoader(dataset_val, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False, sampler=None)
@@ -99,9 +128,13 @@ def run(args):
 
     # Optimizer
     criterion = nn.CrossEntropyLoss().cuda() 
-    optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay, nesterov=args.nesterov)
-    #optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=3)
+    if args.optimizer == 'sgd':
+        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay, nesterov=args.nesterov)
+    elif args.optimizer == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    elif args.optimizer == 'adamw':
+        optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2)
 
     # Training 
     for e in range(1, args.epoches+1):
@@ -136,17 +169,17 @@ def run(args):
         
         # Validation
         #if e % args.verbose_interval == 0:
-        #    val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
+        #    val_loss = validate(agrs, model, val_dl, dataset_val, criterion, verbose=True)
         #else:
-        #    val_loss = validate(model, val_dl, dataset_val, criterion, verbose=False)
-        val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
+        #    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=False)
+        val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
         # lr scheduling
         scheduler.step(val_loss)
     
     print('Final Validation: ', end='')
-    val_loss = validate(model, val_dl, dataset_val, criterion, verbose=True)
+    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
     # Save final model
-    weights_path = os.path.join(args.weights_dir, args.network + '.pth')
+    weights_path = os.path.join(args.weights_dir, '{}_{}_lr{}_e{}_.pth'.format(args.network, args.optimizer, args.learning_rate, args.epoches))
     # split module from dataparallel
     torch.save(model.module.state_dict(), weights_path)
     torch.cuda.empty_cache()
@@ -160,10 +193,10 @@ if __name__ == "__main__":
     # Environment, Dataset
     parser.add_argument("--num_workers", default=os.cpu_count()//2, type=int)
     parser.add_argument("--data_root", default="./", type=str, help="Must contains train_annotations.csv")
-    parser.add_argument("--dataset", default="foot", type=str, choices=['foot', 'pressure', 'point'])
+    parser.add_argument("--dataset", default="foot", type=str, choices=['foot', 'foot_aug', 'pressure', 'point', 'rsdb'])
 
     # Output Path
-    parser.add_argument("--log_name", default="sample_log", type=str) # Not using
+    parser.add_argument("--log_dir", default="log/", type=str)
     parser.add_argument("--weights_dir", default="result/", type=str)
 
     # Training
@@ -175,6 +208,7 @@ if __name__ == "__main__":
     parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--epoches", default=15, type=int)
+    parser.add_argument("--optimizer", default='sgd', type=str, choices=['sgd', 'adam', 'adamw'])
     parser.add_argument("--learning_rate", default=0.001, type=float)
     parser.add_argument("--weight_decay", default=1e-4, type=float)
     parser.add_argument("--nesterov", default=True, type=bool)
