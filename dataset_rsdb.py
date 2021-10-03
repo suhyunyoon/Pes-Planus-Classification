@@ -31,8 +31,9 @@ def get_rsdb_transform(split):
         transform = tf.Compose([#tf.ToTensor(),
                             #tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
                             tf.RandomHorizontalFlip(p=0.5),
+                            tf.RandomVerticalFlip(p=0.5),
                             #tf.RandomRotation()
-                            tf.ColorJitter(hue=.05, saturation=.05),
+                            #tf.ColorJitter(hue=.05, saturation=.05),
                             tf.Normalize(mean, std)])
     else:
         transform = tf.Compose([#tf.ToTensor(),

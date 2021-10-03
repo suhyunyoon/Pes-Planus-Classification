@@ -27,7 +27,7 @@ def eval_score(label, logit):
     precision = precision_score(label, pred, zero_division=0)
     recall = recall_score(label, pred)
     f1 = f1_score(label, pred)
-    fbeta = fbeta_score(label, pred, beta=0.5)
+    fbeta = fbeta_score(label, pred, beta=2)
     
     return acc, precision, recall, f1, fbeta
 
@@ -72,7 +72,13 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
                 'label': labels
                 }
             # save csv
-            df = pd.DataFrame(data=data, index=[dataset.ids[i//3] for i in range(len(dataset.ids)*3)])
+            if args.dataset in ['foot', 'foot_aug']:
+                index = [dataset.ids[i//3] for i in range(len(dataset.ids)*3)]
+            elif args.dataset == 'pressure':
+                index = dataset.ids
+            elif args.dataset == 'rsdb':
+                pass
+            df = pd.DataFrame(data=data, index=index)
             df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
         else:
             data = None

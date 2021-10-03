@@ -19,7 +19,7 @@ def get_transform(split, hw=256, crop_size=224, is_tensor=False):
     if split == 'train':
         transform = [tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
                     tf.RandomHorizontalFlip(p=0.5),
-                    tf.ColorJitter(hue=.05, saturation=.05),
+                    #tf.ColorJitter(hue=.05, saturation=.05),
                     tf.Normalize(mean, std)]
         resize = tf.Resize((hw,hw))
     else:
@@ -43,7 +43,7 @@ def get_pressure_transform(split):
                             tf.CenterCrop((64,128)),
                             #tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
                             tf.RandomVerticalFlip(p=0.5),
-                            tf.ColorJitter(hue=.05, saturation=.05),
+                            #tf.ColorJitter(hue=.05, saturation=.05),
                             tf.Normalize(mean[0], std[0])])
     else:
         transform = tf.Compose([#tf.ToTensor(),

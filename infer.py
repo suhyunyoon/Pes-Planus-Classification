@@ -18,7 +18,9 @@ from dataset_rsdb import CombinationDataset, get_rsdb_transform
 NUM_CLASSES = 2
 
 # ensemble metric
-def predict(logit, t, mode='logit'):
+def predict(logit, t=None, mode='logit'):
+    if t is None:
+        t = torch.LongTensor([0,1,2])
     idx = torch.argsort(t)
     t = t[idx]
     logit = logit[idx]
@@ -111,9 +113,9 @@ def run(args):
     # fill the csv
     mode = 'logit'
     for i, id_ in enumerate(dataset.ids):
-        df.loc[id_, 'Target'] = predict(pred[i], dataset.types[i*3:(i+1)*3], mode)
+        df.loc[id_, 'Target'] = predict(pred[i], dataset.types[i*3:(i+1)*3] if hasattr(dataset, 'types') else None, mode)
     # save submission
-    df.to_csv('./submission.csv', sep=',')
+    df.to_csv('./{}_submission.csv'.format(args.weight_path), sep=',')
 
     torch.cuda.empty_cache()
     
