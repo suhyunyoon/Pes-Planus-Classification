@@ -27,7 +27,7 @@ def eval_score(label, logit):
     precision = precision_score(label, pred, zero_division=0)
     recall = recall_score(label, pred)
     f1 = f1_score(label, pred)
-    fbeta = fbeta_score(label, pred, beta=2)
+    fbeta = fbeta_score(label, pred, beta=0.5)
     
     return acc, precision, recall, f1, fbeta
 
