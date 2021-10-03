@@ -76,7 +76,7 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
             df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
     model.train()
 
-    return val_loss
+    return val_loss, data
     
 
 def run(args):
@@ -137,7 +137,7 @@ def run(args):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2)
 
     # Training
-    weights_name = '{}_{}_lr{}_e{}.pth'.format(args.network, args.optimizer, args.learning_rate, args.epoches)
+    weights_name = '{}_{}_lr{}_b{}_e{}.pth'.format(args.network, args.optimizer, args.learning_rate, args.batch_size, args.epoches)
     best_val_loss = 999999999.
     for e in range(1, args.epoches+1):
         model.train()
@@ -174,7 +174,7 @@ def run(args):
         #    val_loss = validate(agrs, model, val_dl, dataset_val, criterion, verbose=True)
         #else:
         #    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=False)
-        val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
+        val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
         # lr scheduling
         scheduler.step(val_loss)
         # save best model
@@ -186,7 +186,7 @@ def run(args):
             print("Best Model Saved.")
     
     print('Final Validation: ', end='')
-    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
+    val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
     # Save final model
     weights_path = os.path.join(args.weights_dir, weights_name) 
     # split module from dataparallel
