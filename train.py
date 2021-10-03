@@ -77,7 +77,7 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
             elif args.dataset == 'pressure':
                 index = dataset.ids
             elif args.dataset == 'rsdb':
-                pass
+                index = [x[0] for x in dataset.x_combinations]
             df = pd.DataFrame(data=data, index=index)
             df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
         else:
@@ -192,14 +192,15 @@ def run(args):
             # split module from dataparallel
             torch.save(model.module.state_dict(), weights_path)
             print("Best Model Saved.")
-    
-    print('Final Validation: ', end='')
-    val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
+     
     # Save final model
     weights_path = os.path.join(args.weights_dir, weights_name) 
     # split module from dataparallel
     torch.save(model.module.state_dict(), weights_path)
     print(weights_name, "Saved.")
+    
+    print('Final Validation: ', end='')
+    val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
     torch.cuda.empty_cache()
     
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
