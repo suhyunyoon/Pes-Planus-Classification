@@ -74,6 +74,8 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
             # save csv
             df = pd.DataFrame(data=data, index=[dataset.ids[i//3] for i in range(len(dataset.ids)*3)])
             df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
+        else:
+            data = None
     model.train()
 
     return val_loss, data
@@ -98,8 +100,8 @@ def run(args):
         pass
     # rsdb Dynamic set(Classification)
     elif args.dataset == 'rsdb':
-        dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=get_rsdb_transform('train'), val_ratio=0.)
-        dataset_val = CombinationDataset(data_root=args.data_root, data_split='test', transform=get_rsdb_transform('val'), val_ratio=0.)
+        dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=get_rsdb_transform('train'), val_ratio=args.val_ratio)
+        dataset_val = CombinationDataset(data_root=args.data_root, data_split='val', transform=get_rsdb_transform('val'), val_ratio=args.val_ratio)
     
     print(len(dataset_train), len(dataset_val))
     # Dataloader
