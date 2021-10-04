@@ -15,9 +15,12 @@ from dataset import FootDataset, PressureDataset, get_transform, get_pressure_tr
 from dataset_aug import FootDatasetAug
 from dataset_rsdb import CombinationDataset, get_rsdb_transform
 
+from infer import save_predict
+
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, fbeta_score
 
 NUM_CLASSES = 2
+
 
 # EVALUATION
 def eval_score(label, logit):
@@ -59,27 +62,7 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
             acc, precision, recall, f1, fbeta = eval_score(labels, logits)
             print('Validation Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (val_loss, acc, precision, recall, f1, fbeta))
         if save:
-            # LMR annotations exists
-            if hasattr(dataset, 'types'):
-                types = dataset.types
-            else:
-                types = [0] * len(dataset)
-            data = {
-                'type': types,
-                'logit_0': logits[:,0],
-                'logit_1': logits[:,1],
-                'pred': preds,
-                'label': labels
-                }
-            # save csv
-            if args.dataset in ['foot', 'foot_aug']:
-                index = [dataset.ids[i//3] for i in range(len(dataset.ids)*3)]
-            elif args.dataset == 'pressure':
-                index = dataset.ids
-            elif args.dataset == 'rsdb':
-                index = [x[0] for x in dataset.x_combinations]
-            df = pd.DataFrame(data=data, index=index)
-            df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
+            pass = save_predict(args, dataset, logits, preds, labels)
         else:
             data = None
     model.train()

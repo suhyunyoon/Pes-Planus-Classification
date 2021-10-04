@@ -43,6 +43,49 @@ def predict(logit, t=None, mode='logit'):
         return torch.argmax(logit[2])
     return -1
 
+# save predict into csv
+def save_predict(args, dataset, logits, preds, labels):
+    # LMR annotations exists
+    if hasattr(dataset, 'types'):
+        types = dataset.types
+    else:
+        types = [0] * len(dataset)
+    data = {
+        'type': types,
+        'logit_0': logits[:,0],
+        'logit_1': logits[:,1],
+        'pred': preds,
+        'label': labels
+        }
+    # save csv
+    if args.dataset in ['foot', 'foot_aug']:
+        index = [dataset.ids[i//3] for i in range(len(dataset.ids)*3)]
+    elif args.dataset == 'pressure':
+        index = dataset.ids
+    elif args.dataset == 'rsdb':
+        index = [x[0] for x in dataset.x_combinations]
+    df = pd.DataFrame(data=data, index=index)
+    df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
+
+    return data
+
+def inference(args, model, dl):
+    logits = []
+    for pack in tqdm(dl):        
+        img = pack[0]
+        img = img.cuda()
+        
+        # calc loss
+        logit = model(img)
+        
+        # pred
+        logit = logit.detach()
+        logits.append(logit)
+    # make prediction    
+    logits = torch.cat(logits, dim=0).cpu()
+    
+    return logits
+
 def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -97,27 +140,22 @@ def run(args):
 
     # inference
     model.eval()
-    logits = []
 
+    # save logit
+    '''
     from train import validate
     criterion=nn.CrossEntropyLoss()
     args.log_dir = './'
     validate(args, model, dl, dataset, criterion, verbose=False, save=True)
+    '''
+    # Forward
+    logits = inference(args, model, dl) 
+    preds = torch.argmax(logits, dim=1)
 
+    # save predictions
+    args.log_dir ='./'
+    save_predict(args, dataset, logits, preds, torch.zeros(len(logits)))
 
-
-    for pack in tqdm(dl):        
-        img = pack[0]
-        img = img.cuda()
-        
-        # calc loss
-        logit = model(img)
-        
-        # pred
-        logit = logit.detach()
-        logits.append(logit)
-    # make prediction    
-    logits = torch.cat(logits, dim=0).cpu()
     # reshape to calc per ids
     if args.dataset in ['foot', 'foot_aug']:
         pred = logits.reshape(logits.size(0)//3, 3, logits.size(1))
@@ -144,6 +182,8 @@ def run(args):
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     print('Done.')
 
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -158,7 +198,7 @@ if __name__ == "__main__":
 
     # Inference
     parser.add_argument("--seed", default=42, type=int)
-    parser.add_argument("--network", default="resnet50", type=str,
+    parser.add_argument("--network", type=str,
                          choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'fixmatch_resnet50'])
     parser.add_argument("--hw", default=256, type=int)
     parser.add_argument("--crop_size", default=224, type=int)
