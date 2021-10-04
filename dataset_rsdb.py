@@ -78,9 +78,6 @@ class CombinationDataset(Dataset):
 
         temp_split = 'train' if data_split == 'val' else self.data_split
 
-        if data_split == "test":
-            print("data set is test")
-
         dataset_dir = join(data_root, data_split)
 
 
@@ -122,22 +119,14 @@ class CombinationDataset(Dataset):
 
             self.foot_list_map[uuid] = resized_dmi_list
 
-            if data_split == "test":
-        
-                img = torch.cat((resized_dmi_list['left'][0], resized_dmi_list['right'][0]), 2)                        
-                self.x_img_list.append(img)
-                # self.x_combinations.append(combination)
-                self.y_data.append(target)
-
-            else:
-                for li in range(len(dmi_list['left'])):
-                    for ri in range(len(dmi_list['right'])):
-                        # combination = uuid, li, ri
-                        img = torch.cat((resized_dmi_list['left'][li], resized_dmi_list['right'][ri]), 2)
-                        
-                        self.x_img_list.append(img)
-                        # self.x_combinations.append(combination)
-                        self.y_data.append(target)
+            for li in range(len(dmi_list['left'])):
+                for ri in range(len(dmi_list['right'])):
+                    # combination = uuid, li, ri
+                    img = torch.cat((resized_dmi_list['left'][li], resized_dmi_list['right'][ri]), 2)
+                    
+                    self.x_img_list.append(img)
+                    # self.x_combinations.append(combination)
+                    self.y_data.append(target)
 
 
     def __len__(self):
