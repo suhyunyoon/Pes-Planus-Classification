@@ -145,7 +145,8 @@ def run(args):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2)
 
     # Training
-    weights_name = '{}_{}_lr{}_b{}_e{}.pth'.format(args.network, args.optimizer, args.learning_rate, args.batch_size, args.epoches)
+    weights_name = '{}_{}_{}_lr{}_b{}_e{}'.format(args.dataset, args.network, args.optimizer, args.learning_rate, args.batch_size, args.epoches)
+    os.makedirs(os.path.join(args.weights_dir, weights_name), exist_ok=True)
     best_val_loss = 999999999.
     for e in range(1, args.epoches+1):
         model.train()
@@ -177,26 +178,21 @@ def run(args):
         acc, precision, recall, f1, fbeta = eval_score(labels, logits)
         print('Epoch %d Train Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (e, train_loss, acc, precision, recall, f1, fbeta))
         
-        # Validation
-        #if e % args.verbose_interval == 0:
-        #    val_loss = validate(agrs, model, val_dl, dataset_val, criterion, verbose=True)
-        #else:
-        #    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=False)
+        # Validation 
         val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
         # lr scheduling
         scheduler.step(val_loss)
         # save best model
         if best_val_loss > val_loss:
             best_val_loss = val_loss
-            weights_path = os.path.join(args.weights_dir, 'best_' + weights_name) 
+            weights_path = os.path.join(args.weights_dir, weights_name, '{}_best.pth'.format(e)) 
             # split module from dataparallel
             torch.save(model.module.state_dict(), weights_path)
             print("Best Model Saved.")
-     
-    # Save final model
-    weights_path = os.path.join(args.weights_dir, weights_name) 
-    # split module from dataparallel
-    torch.save(model.module.state_dict(), weights_path)
+        else:
+            weights_path = os.path.join(args.weights_dir, weights_name, '{}.pth'.format(e)) 
+            # split module from dataparallel
+            torch.save(model.module.state_dict(), weights_path)
     print(weights_name, "Saved.")
     
     print('Final Validation: ', end='')

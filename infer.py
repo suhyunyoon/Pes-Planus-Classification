@@ -25,7 +25,7 @@ def predict(logit, t=None, mode='logit'):
     t = t[idx]
     logit = logit[idx]
     if mode=='logit':
-        if torch.sum(logit[:,1]) > 1.3:
+        if torch.mean(logit[:,1]) >= 0.5:
             return 1
         else:
             return 0
@@ -105,7 +105,14 @@ def run(args):
     # make prediction    
     logits = torch.cat(logits, dim=0).cpu()
     # reshape to calc per ids
-    pred = logits.reshape(logits.size(0)//3, 3, logits.size(1))
+    if args.dataset in ['foot', 'foot_aug']:
+        pred = logits.reshape(logits.size(0)//3, 3, logits.size(1))
+    elif args.dataset == 'rsdb':
+        # get uuid, logit pair
+        pred = {id_:[] for id_ in dataset.ids}
+        for p, l in zip(dataset.x_combinations, logits):
+            pred[p[0]].append(l)
+        pred = [torch.stack(pred[uuid], dim=0) for uuid in dataset.ids]
     
     # read submission csv
     df = pd.read_csv(os.path.join(args.data_root, 'submission.csv'), index_col=0)
@@ -114,6 +121,7 @@ def run(args):
     mode = 'logit'
     for i, id_ in enumerate(dataset.ids):
         df.loc[id_, 'Target'] = predict(pred[i], dataset.types[i*3:(i+1)*3] if hasattr(dataset, 'types') else None, mode)
+
     # save submission
     df.to_csv('./{}_submission.csv'.format(args.weight_path), sep=',')
 

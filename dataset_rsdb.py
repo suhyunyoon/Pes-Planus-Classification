@@ -82,7 +82,7 @@ class CombinationDataset(Dataset):
 
 
 
-        # self.x_combinations = []
+        self.x_combinations = []
         self.x_img_list = []
         self.y_data = []
 
@@ -121,11 +121,11 @@ class CombinationDataset(Dataset):
 
             for li in range(len(dmi_list['left'])):
                 for ri in range(len(dmi_list['right'])):
-                    # combination = uuid, li, ri
+                    combination = uuid, li, ri
                     img = torch.cat((resized_dmi_list['left'][li], resized_dmi_list['right'][ri]), 2)
                     
                     self.x_img_list.append(img)
-                    # self.x_combinations.append(combination)
+                    self.x_combinations.append(combination)
                     self.y_data.append(target)
 
 
@@ -143,8 +143,6 @@ class CombinationDataset(Dataset):
 
         if self.transform is not None:
             img = self.transform(img)
-        # else:
-        #     img = img
 
         return img, self.y_data[idx]
 

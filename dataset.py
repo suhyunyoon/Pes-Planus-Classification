@@ -206,9 +206,6 @@ if __name__ == "__main__":
     parser.add_argument("--data_root", default="./", type=str, help="Must contains train_annotations.csv")
     args = parser.parse_args()
     
-    dataset_val = FootDataset(data_root=args.data_root, data_split='test', transform=get_transform('val'), val_ratio=0.)
-    print(len(dataset_val))
-    '''
     dataset_train = FootDataset(data_root=args.data_root, data_split='train', transform=get_transform('train'), val_ratio=0.2)
     dataset_val = FootDataset(data_root=args.data_root, data_split='val', transform=get_transform('val'), val_ratio=0.2)
 
@@ -230,4 +227,3 @@ if __name__ == "__main__":
     print(len(dataset_train), len(dataset_val))
     print(dataset_train[0][0].shape, dataset_train[0][1])
     print(dataset_val[0][0].shape, dataset_val[0][1])
-    '''
