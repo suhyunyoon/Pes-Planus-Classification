@@ -18,6 +18,7 @@ from os.path import join
 from tqdm import tqdm
 
 import argparse
+
 # Mixed Dynamic Maximum Image
 
 
@@ -30,8 +31,9 @@ def get_rsdb_transform(split):
         transform = tf.Compose([#tf.ToTensor(),
                             #tf.RandomCrop(crop_size, padding=4, padding_mode='reflect'),
                             tf.RandomHorizontalFlip(p=0.5),
+                            tf.RandomVerticalFlip(p=0.5),
                             #tf.RandomRotation()
-                            tf.ColorJitter(hue=.05, saturation=.05),
+                            #tf.ColorJitter(hue=.05, saturation=.05),
                             tf.Normalize(mean, std)])
     else:
         transform = tf.Compose([#tf.ToTensor(),
@@ -76,11 +78,15 @@ class CombinationDataset(Dataset):
 
         temp_split = 'train' if data_split == 'val' else self.data_split
 
+        if data_split == "test":
+            print("data set is test")
+
         dataset_dir = join(data_root, data_split)
 
 
 
-        self.x_combinations = []
+        # self.x_combinations = []
+        self.x_img_list = []
         self.y_data = []
 
         self.foot_list_map = {}
@@ -92,8 +98,6 @@ class CombinationDataset(Dataset):
             rsdb_dir = join(dataset_dir, uuid, "rsdb")
             # print('rsdb_dir = {}'.format(rsdb_dir))
             dmi_list = rsdb_reader.convert_Dynamic_Maximum_Image(rsdb_dir)
-
-
 
             resized_dmi_list = {
                 'left': [],
@@ -118,25 +122,35 @@ class CombinationDataset(Dataset):
 
             self.foot_list_map[uuid] = resized_dmi_list
 
-            for li in range(len(dmi_list['left'])):
-                for ri in range(len(dmi_list['right'])):
-                    combination = uuid, li, ri
-                    
-                    self.x_combinations.append(combination)
-                    self.y_data.append(target)
+            if data_split == "test":
+        
+                img = torch.cat((resized_dmi_list['left'][0], resized_dmi_list['right'][0]), 2)                        
+                self.x_img_list.append(img)
+                # self.x_combinations.append(combination)
+                self.y_data.append(target)
+
+            else:
+                for li in range(len(dmi_list['left'])):
+                    for ri in range(len(dmi_list['right'])):
+                        # combination = uuid, li, ri
+                        img = torch.cat((resized_dmi_list['left'][li], resized_dmi_list['right'][ri]), 2)
+                        
+                        self.x_img_list.append(img)
+                        # self.x_combinations.append(combination)
+                        self.y_data.append(target)
 
 
     def __len__(self):
-        return len(self.x_combinations)
+        return len(self.y_data)
 
     def __getitem__(self, idx):
         
-        uuid, li, ri = self.x_combinations[idx]
+        # uuid, li, ri = self.x_combinations[idx]
 
-        l_img = self.foot_list_map[uuid]['left'][li]
-        r_img = self.foot_list_map[uuid]['right'][ri]
+        # l_img = self.foot_list_map[uuid]['left'][li]
+        # r_img = self.foot_list_map[uuid]['right'][ri]
 
-        img = torch.cat((l_img, r_img), 2)
+        img = self.x_img_list[idx]
 
         if self.transform is not None:
             img = self.transform(img)
