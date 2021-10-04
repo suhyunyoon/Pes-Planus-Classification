@@ -72,11 +72,19 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
                 'label': labels
                 }
             # save csv
-            df = pd.DataFrame(data=data, index=[dataset.ids[i//3] for i in range(len(dataset.ids)*3)])
+            if args.dataset in ['foot', 'foot_aug']:
+                index = [dataset.ids[i//3] for i in range(len(dataset.ids)*3)]
+            elif args.dataset == 'pressure':
+                index = dataset.ids
+            elif args.dataset == 'rsdb':
+                index = [x[0] for x in dataset.x_combinations]
+            df = pd.DataFrame(data=data, index=index)
             df.to_csv(os.path.join(args.log_dir, '{}_test.csv'.format(args.network)), sep=',')
+        else:
+            data = None
     model.train()
 
-    return val_loss
+    return val_loss, data
     
 
 def run(args):
@@ -98,8 +106,8 @@ def run(args):
         pass
     # rsdb Dynamic set(Classification)
     elif args.dataset == 'rsdb':
-        dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=get_rsdb_transform('train'), val_ratio=0.)
-        dataset_val = CombinationDataset(data_root=args.data_root, data_split='test', transform=get_rsdb_transform('val'), val_ratio=0.)
+        dataset_train = CombinationDataset(data_root=args.data_root, data_split='train', transform=get_rsdb_transform('train'), val_ratio=args.val_ratio)
+        dataset_val = CombinationDataset(data_root=args.data_root, data_split='val', transform=get_rsdb_transform('val'), val_ratio=args.val_ratio)
     
     print(len(dataset_train), len(dataset_val))
     # Dataloader
@@ -136,7 +144,9 @@ def run(args):
         optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2)
 
-    # Training 
+    # Training
+    weights_name = '{}_{}_lr{}_b{}_e{}.pth'.format(args.network, args.optimizer, args.learning_rate, args.batch_size, args.epoches)
+    best_val_loss = 999999999.
     for e in range(1, args.epoches+1):
         model.train()
         train_loss = 0.
@@ -172,16 +182,25 @@ def run(args):
         #    val_loss = validate(agrs, model, val_dl, dataset_val, criterion, verbose=True)
         #else:
         #    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=False)
-        val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
+        val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True)
         # lr scheduling
         scheduler.step(val_loss)
-    
-    print('Final Validation: ', end='')
-    val_loss = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
+        # save best model
+        if best_val_loss > val_loss:
+            best_val_loss = val_loss
+            weights_path = os.path.join(args.weights_dir, 'best_' + weights_name) 
+            # split module from dataparallel
+            torch.save(model.module.state_dict(), weights_path)
+            print("Best Model Saved.")
+     
     # Save final model
-    weights_path = os.path.join(args.weights_dir, '{}_{}_lr{}_e{}_.pth'.format(args.network, args.optimizer, args.learning_rate, args.epoches))
+    weights_path = os.path.join(args.weights_dir, weights_name) 
     # split module from dataparallel
     torch.save(model.module.state_dict(), weights_path)
+    print(weights_name, "Saved.")
+    
+    print('Final Validation: ', end='')
+    val_loss, _ = validate(args, model, val_dl, dataset_val, criterion, verbose=True, save=True)
     torch.cuda.empty_cache()
     
     print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
