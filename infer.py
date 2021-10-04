@@ -67,24 +67,30 @@ def run(args):
     
     # Model
     if args.network == 'resnet18':
-        model = resnet18(pretrained=True)
+        model = resnet18(num_classes=NUM_CLASSES)
         f_num = 512
     elif args.network == 'resnet34':
-        model = resnet34(pretrained=True)
+        model = resnet34(num_classes=NUM_CLASSES)
         f_num = 512
     elif args.network == 'resnet50':
-        model = resnet50(pretrained=True)
+        model = resnet50(num_classes=NUM_CLASSES)
         f_num = 2048
     elif args.network == 'resnet101':
-        model = resnet101(pretrained=True)
+        model = resnet101(num_classes=NUM_CLASSES)
         f_num = 2048
     elif args.network == 'resnet152':
-        model = resnet152(pretrained=True)
+        model = resnet152(num_classes=NUM_CLASSES)
         f_num = 2048
-    model.fc = nn.Linear(f_num, NUM_CLASSES)
+    elif args.network == 'fixmatch_resnet50':
+        model = resnet50(num_classes=NUM_CLASSES)
+    #model.fc = nn.Linear(f_num, NUM_CLASSES)
 
     # Load model
-    model.load_state_dict(torch.load(args.weight_path), strict=True)
+    if args.network == 'fixmatch_resnet50':
+        checkpoint = torch.load(args.weight_path)
+        model.load_state_dict(checkpoint['state_dict'])
+    else:
+        model.load_state_dict(torch.load(args.weight_path), strict=True)
     
     # model dataparallel
     model = nn.DataParallel(model).cuda()
@@ -92,6 +98,14 @@ def run(args):
     # inference
     model.eval()
     logits = []
+
+    from train import validate
+    criterion=nn.CrossEntropyLoss()
+    args.log_dir = './'
+    validate(args, model, dl, dataset, criterion, verbose=False, save=True)
+
+
+
     for pack in tqdm(dl):        
         img = pack[0]
         img = img.cuda()
@@ -145,7 +159,7 @@ if __name__ == "__main__":
     # Inference
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--network", default="resnet50", type=str,
-                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'])
+                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'fixmatch_resnet50'])
     parser.add_argument("--hw", default=256, type=int)
     parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=16, type=int)
