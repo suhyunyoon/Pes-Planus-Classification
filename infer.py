@@ -7,7 +7,8 @@ import pandas as pd
 import torch
 from torch import nn
 
-from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
+from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152, densenet121, densenet169, densenet201, vgg19_bn, \
+                                wide_resnet50_2, wide_resnet101_2, resnext50_32x4d, resnext101_32x8d
 
 from torch.utils.data import DataLoader
 
@@ -111,22 +112,34 @@ def run(args):
     # Model
     if args.network == 'resnet18':
         model = resnet18(num_classes=NUM_CLASSES)
-        f_num = 512
     elif args.network == 'resnet34':
         model = resnet34(num_classes=NUM_CLASSES)
-        f_num = 512
     elif args.network == 'resnet50':
         model = resnet50(num_classes=NUM_CLASSES)
-        f_num = 2048
     elif args.network == 'resnet101':
         model = resnet101(num_classes=NUM_CLASSES)
-        f_num = 2048
     elif args.network == 'resnet152':
         model = resnet152(num_classes=NUM_CLASSES)
-        f_num = 2048
+    # fixmatch
     elif args.network == 'fixmatch_resnet50':
         model = resnet50(num_classes=NUM_CLASSES)
-    #model.fc = nn.Linear(f_num, NUM_CLASSES)
+    # densenet
+    elif args.network == 'densenet121':
+        model = densenet121(num_classes=NUM_CLASSES)
+    elif args.network == 'densenet169':
+        model = densenet169(num_classes=NUM_CLASSES)
+    elif args.network == 'densenet201':
+        model = densenet201(num_classes=NUM_CLASSES)
+    # wideresnet
+    elif args.network == 'wide_resnet50_2':
+        model = wide_resnet50_2(num_classes=NUM_CLASSES)
+    elif args.network == 'wide_resnet101_2':
+        model = wide_resnet101_2(num_classes=NUM_CLASSES)
+    # resnext
+    elif args.network == 'resnext50_32x4d':
+        model = resnext50_32x4d(num_classes=NUM_CLASSES)
+    elif args.network == 'resnext101_32x8d':
+        model = resnext101_32x8d(num_classes=NUM_CLASSES)
 
     # Load model
     if args.network == 'fixmatch_resnet50':
@@ -199,7 +212,8 @@ if __name__ == "__main__":
     # Inference
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--network", type=str,
-                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'fixmatch_resnet50'])
+                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'densenet121', 'densenet169', 'densenet201',
+                                    'vgg19', 'wide_resnet50_2', 'wide_resnet101_2', 'resnext50_32x4d', 'resnext101_32x8d'])
     parser.add_argument("--hw", default=256, type=int)
     parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=16, type=int)
