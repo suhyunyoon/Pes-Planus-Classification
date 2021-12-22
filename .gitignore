@@ -4,3 +4,7 @@ __pycache__
 /data
 /log
 /result
+*.csv
+*.pickle
+*.sh
+*.log
