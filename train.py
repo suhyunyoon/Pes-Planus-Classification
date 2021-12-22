@@ -7,7 +7,8 @@ import pandas as pd
 import torch
 from torch import nn, optim
 
-from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152
+from torchvision.models import resnet18, resnet34, resnet50, resnet101, resnet152, densenet121, densenet169, densenet201, vgg19_bn, \
+                                wide_resnet50_2, wide_resnet101_2, resnext50_32x4d, resnext101_32x8d
 
 from torch.utils.data import DataLoader
 
@@ -62,7 +63,7 @@ def validate(args, model, dl, dataset, criterion, verbose=False, save=False):
             acc, precision, recall, f1, fbeta = eval_score(labels, logits)
             print('Validation Loss: %.6f, Accuracy: %.6f, Precision: %.6f, Recall: %.6f, F1: %.6f, F2: %.6f' % (val_loss, acc, precision, recall, f1, fbeta))
         if save:
-            pass = save_predict(args, dataset, logits, preds, labels)
+            data = save_predict(args, dataset, logits, preds, labels)
         else:
             data = None
     model.train()
@@ -99,21 +100,47 @@ def run(args):
     
     # Model
     if args.network == 'resnet18':
-        model = resnet18(pretrained=True)
+        model = resnet18(pretrained=args.pretrained)
         f_num = 512
     elif args.network == 'resnet34':
-        model = resnet34(pretrained=True)
+        model = resnet34(pretrained=args.pretrained)
         f_num = 512
     elif args.network == 'resnet50':
-        model = resnet50(pretrained=True)
+        model = resnet50(pretrained=args.pretrained)
         f_num = 2048
     elif args.network == 'resnet101':
-        model = resnet101(pretrained=True)
+        model = resnet101(pretrained=args.pretrained)
         f_num = 2048
     elif args.network == 'resnet152':
-        model = resnet152(pretrained=True)
+        model = resnet152(pretrained=args.pretrained)
         f_num = 2048
-    model.fc = nn.Linear(f_num, NUM_CLASSES)
+    elif args.network == 'densenet121':
+        model = densenet121(pretrained=args.pretrained)
+        f_num = 1024
+    elif args.network == 'densenet169':
+        model = densenet169(pretrained=args.pretrained)
+        f_num = 1664
+    elif args.network == 'densenet201':
+        model = densenet201(pretrained=args.pretrained)
+        f_num = 1920
+    elif args.network == 'wide_resnet50_2':
+        model = wide_resnet50_2(pretrained=args.pretrained)
+        f_num = 2048
+    elif args.network == 'wide_resnet101_2':
+        model = wide_resnet101_2(pretrained=args.pretrained)
+        f_num = 2048
+    elif args.network == 'resnext50_32x4d':
+        model = resnext50_32x4d(pretrained=args.pretrained)
+        f_num = 2048
+    elif args.network == 'resnext101_32x8d':
+        model = resnext101_32x8d(pretrained=args.pretrained)
+        f_num = 2048
+    # resnet
+    if hasattr(model, 'fc'):
+        model.fc = nn.Linear(f_num, NUM_CLASSES)
+    # densenet
+    elif hasattr(model, 'classifier'):
+        model.classifier = nn.Linear(f_num, NUM_CLASSES)
     # model dataparallel
     model = nn.DataParallel(model).cuda()
 
@@ -128,7 +155,7 @@ def run(args):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2)
 
     # Training
-    weights_name = '{}_{}_{}_lr{}_b{}_e{}'.format(args.dataset, args.network, args.optimizer, args.learning_rate, args.batch_size, args.epoches)
+    weights_name = '{}_{}_{}_lr{}_b{}_e{}_hw{}'.format(args.dataset, args.network, args.optimizer, args.learning_rate, args.batch_size, args.epoches, args.crop_size)
     os.makedirs(os.path.join(args.weights_dir, weights_name), exist_ok=True)
     best_val_loss = 999999999.
     for e in range(1, args.epoches+1):
@@ -199,15 +226,17 @@ if __name__ == "__main__":
 
     # Training
     parser.add_argument("--seed", default=42, type=int)
-    parser.add_argument("--network", default="resnet50", type=str,
-                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'])
+    parser.add_argument("--network", default="resnet152", type=str,
+                         choices=['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'densenet121', 'densenet169', 'densenet201',
+                                    'vgg19', 'wide_resnet50_2', 'wide_resnet101_2', 'resnext50_32x4d', 'resnext101_32x8d'])
+    parser.add_argument("--pretrained", default=True, type=bool)
     parser.add_argument("--val_ratio", default=0.15, type=float)
     parser.add_argument("--hw", default=256, type=int)
     parser.add_argument("--crop_size", default=224, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--epoches", default=15, type=int)
+    parser.add_argument("--epoches", default=20, type=int)
     parser.add_argument("--optimizer", default='sgd', type=str, choices=['sgd', 'adam', 'adamw'])
-    parser.add_argument("--learning_rate", default=0.001, type=float)
+    parser.add_argument("--learning_rate", default=0.01, type=float)
     parser.add_argument("--weight_decay", default=1e-4, type=float)
     parser.add_argument("--nesterov", default=True, type=bool)
     parser.add_argument("--verbose_interval", default=3, type=int)
